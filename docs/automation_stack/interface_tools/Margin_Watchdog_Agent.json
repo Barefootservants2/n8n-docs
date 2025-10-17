@@ -1,0 +1,133 @@
+{
+  "name": "Margin_Watchdog_Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "broker/snapshot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0",
+      "name": "Webhook (broker/snapshot)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json; const margin = Number(d.marginDebit || d.margin || 0);\nconst sweep = Number(d.sweep || 0); const cash = Number(d.cash || 0); const unsettled = Number(d.unsettled || 0);\nconst flags=[]; if(margin<0) flags.push(`Margin debit: ${margin}`); if(sweep>0) flags.push(`Sweep funds: ${sweep}`); if(unsettled>0) flags.push(`Unsettled cash: ${unsettled}`);\nconst ok = flags.length===0; return [{json:{ok,flags,summary:`${ok?'OK':'Attention'} \u00b7 cash=${cash} \u00b7 sweep=${sweep} \u00b7 margin=${margin}`}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        0
+      ],
+      "id": "1",
+      "name": "Evaluate Snapshot"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !$json.ok }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "2",
+      "name": "If Attention"
+    },
+    {
+      "parameters": {
+        "text": "={{ '\u26a0\ufe0f Margin/Sweep Alert: ' + $json.summary + '\\n' + $json.flags.join('\\n') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "3",
+      "name": "Alert Telegram"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "options": {
+          "responseBody": "={{ $json }}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "4",
+      "name": "Respond"
+    }
+  ],
+  "connections": {
+    "Webhook (broker/snapshot)": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Snapshot": {
+      "main": [
+        [
+          {
+            "node": "If Attention",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Attention": {
+      "main": [
+        [
+          {
+            "node": "Alert Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cca8bdba-a4f0-4043-95fa-15119ef1b265",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "name": "Backup_n8n_to_GitHub",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0",
+      "name": "Manual"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "repoOwner",
+              "value": "Barefootservants2"
+            },
+            {
+              "name": "repoName",
+              "value": "n8n-docs"
+            },
+            {
+              "name": "branch",
+              "value": "main"
+            },
+            {
+              "name": "folder",
+              "value": "docs/automation_stack/backups_sync"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        320,
+        0
+      ],
+      "id": "1",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://YOUR_N8N_HOST/rest/workflows",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "YOUR_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "2",
+      "name": "List Workflows"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{path:`workflows_export_${Date.now()}.json`, content: JSON.stringify($json)}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "3",
+      "name": "Prep File"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://api.github.com/repos/' + $node['Config'].json.repoOwner + '/' + $node['Config'].json.repoName + '/contents/' + $node['Config'].json.folder + '/' + $json.path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GITHUB_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"message\": \"n8n backup\", \"content\": Buffer.from($json.content).toString('base64'), \"branch\": $node['Config'].json.branch }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "4",
+      "name": "Upload to GitHub"
+    }
+  ],
+  "connections": {
+    "Manual": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "List Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Workflows": {
+      "main": [
+        [
+          {
+            "node": "Prep File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep File": {
+      "main": [
+        [
+          {
+            "node": "Upload to GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e020f534-bc1f-401a-87ac-a1cde3673f9c",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

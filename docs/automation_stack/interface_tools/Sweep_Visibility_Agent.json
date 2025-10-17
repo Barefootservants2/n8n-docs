@@ -1,0 +1,167 @@
+{
+  "name": "Sweep_Visibility_Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0",
+      "name": "Schedule"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "broker/sweep",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        0
+      ],
+      "id": "1",
+      "name": "Await Snapshot (webhook)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const {sweep=0,cash=0,margin=0,account=''}=$json; const attention=(sweep>0)||(margin<0);\nreturn [{json:{account,sweep,cash,margin,attention}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "2",
+      "name": "Evaluate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.attention }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "3",
+      "name": "If Attention"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "Sweep / Margin Notice",
+        "message": "={{ 'Acct: ' + $json.account + ' \u00b7 Sweep: ' + $json.sweep + ' \u00b7 Margin: ' + $json.margin }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "4",
+      "name": "Email Notice"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "options": {
+          "responseBody": "={{ $json }}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "5",
+      "name": "Webhook Reply"
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Await Snapshot (webhook)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Await Snapshot (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Evaluate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate": {
+      "main": [
+        [
+          {
+            "node": "If Attention",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Webhook Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Attention": {
+      "main": [
+        [
+          {
+            "node": "Email Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3aa72589-c205-4644-82d9-0d889773ec29",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
